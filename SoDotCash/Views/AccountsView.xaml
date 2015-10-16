@@ -1,0 +1,80 @@
+﻿<UserControl
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:utility="clr-namespace:SoDotCash.Utility"
+             xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
+             xmlns:datavis="clr-namespace:System.Windows.Controls.DataVisualization;assembly=System.Windows.Controls.DataVisualization.Toolkit"
+             xmlns:charting="clr-namespace:System.Windows.Controls.DataVisualization.Charting;assembly=System.Windows.Controls.DataVisualization.Toolkit"
+             xmlns:models="clr-namespace:SoDotCash.Models"
+             xmlns:xcdg="http://schemas.xceed.com/wpf/xaml/datagrid" 
+             xmlns:services="clr-namespace:SoDotCash.Services"
+             x:Class="SoDotCash.Views.AccountsView"
+             xmlns:mui="http://firstfloorsoftware.com/ModernUI"
+             xmlns:primitives="clr-namespace:System.Windows.Controls.DataVisualization.Charting.Primitives;assembly=System.Windows.Controls.DataVisualization.Toolkit"
+             mc:Ignorable="d"
+             Height="400" Width="1250"
+             DataContext="{Binding Accounts, Source={StaticResource Locator}}"
+             >
+    <Grid>
+        <Grid Name="AccountsGrid1" IsEnabled="{Binding Source={x:Static services:BackgroundTaskTracker.Instance}, Path=ActionsPending, Converter={StaticResource BoolToInverseBoolConverter}}">
+
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition Width="3*"/>
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Column="0" Margin="10" Name="AccountsGrid2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="25"/>
+                    <RowDefinition />
+                </Grid.RowDefinitions>
+
+                <Label Content="Accounts" HorizontalAlignment="Left" Margin="0,5,0,0" />
+                <Button Grid.Row="0" x:Name="AddAccount" Content="Add Account" HorizontalAlignment="Right"  VerticalAlignment="Top"  Command="{Binding AddAccountCommand}"/>
+
+                <TreeView x:Name="AccountsList"  Grid.Row="1" Margin="10,0,10,10" ItemsSource="{Binding AccountsView}">
+                    <i:Interaction.Behaviors>
+                        <utility:BindableSelectedItemBehavior SelectedItem="{Binding SelectedAccount, Mode=TwoWay}"/>
+                    </i:Interaction.Behaviors>
+
+                    <TreeView.ItemTemplate>
+                        <HierarchicalDataTemplate ItemsSource="{Binding Value}">
+                            <TextBlock Text="{Binding Key}" />
+                            <HierarchicalDataTemplate.ItemTemplate>
+                                <DataTemplate DataType="models:Account">
+                                    <TextBlock Text="{Binding AccountName}"/>
+                                </DataTemplate>
+                            </HierarchicalDataTemplate.ItemTemplate>
+                        </HierarchicalDataTemplate>
+                    </TreeView.ItemTemplate>
+                    <TreeView.Style>
+                        <Style BasedOn="{StaticResource accountViewTreeStyle}" TargetType="TreeView"/>
+                    </TreeView.Style>
+                    <TreeView.ItemContainerStyle>
+                        <Style TargetType="{x:Type TreeViewItem}" BasedOn="{StaticResource {x:Type TreeViewItem}}">
+                            <Style.Triggers>
+                                <Trigger Property="HasItems" Value="True">
+                                    <Setter Property="Focusable" Value="False" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TreeView.ItemContainerStyle>
+                </TreeView>
+
+            </Grid>
+
+            <mui:ModernTab Grid.Column="1" Name="TabFrame" IsEnabled="{Binding ElementName=AccountsList, Mode=OneWay, Path=SelectedValue, Converter={StaticResource SelectedValueToIsEnabled}}" 
+                       SelectedSource="{Binding SelectedTabSource, Mode=TwoWay}" >
+                <mui:ModernTab.Links>
+                    <mui:Link DisplayName="Graph" Source="/Views/AccountsViewTabs/AccountGraph.xaml" />
+                    <mui:Link DisplayName="Ledger" Source="/Views/AccountsViewTabs/AccountLedger.xaml" />
+                    <mui:Link DisplayName="Import" Source="/Views/AccountsViewTabs/AccountImport.xaml" />
+                    <mui:Link DisplayName="Config" Source="/Views/AccountsViewTabs/AccountConfiguration.xaml" />
+                </mui:ModernTab.Links>
+            </mui:ModernTab>
+        </Grid>
+        <ProgressBar IsIndeterminate="true" Visibility="{Binding Source={x:Static services:BackgroundTaskTracker.Instance}, Path=ActionsPending, Converter={StaticResource BoolToVisibilityConverter}}"/>
+    </Grid>
+</UserControl>

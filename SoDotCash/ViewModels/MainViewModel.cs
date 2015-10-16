@@ -1,117 +1,97 @@
 using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.IO;
-using System.Windows.Controls;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
+using FirstFloor.ModernUI.Presentation;
 using GalaSoft.MvvmLight;
-using GalaSoft.MvvmLight.Messaging;
-using OFX;
-using SoDotCash.Models;
+using SoDotCash.ViewModels.Navigation;
+using RelayCommand = GalaSoft.MvvmLight.CommandWpf.RelayCommand;
 
 namespace SoDotCash.ViewModels
 {
-    /// <summary>
-    /// This class contains properties that the main View can data bind to.
-    /// <para>
-    /// Use the <strong>mvvminpc</strong> snippet to add bindable properties to this ViewModel.
-    /// </para>
-    /// <para>
-    /// You can also use Blend to data bind with the tool's support.
-    /// </para>
-    /// <para>
-    /// See http://www.galasoft.ch/mvvm
-    /// </para>
-    /// </summary>
-    public class MainViewModel : ViewModelBase
-    {
 
+    /// <summary>
+    /// The main application window. This is a shell for views displayed within
+    /// </summary>
+    public class MainViewModel : ModernViewModelBase
+    {
         #region [ Public Bound Properties ]
 
-        public string TestString
+        /// <summary>
+        /// The ViewModel tied to the currently active view in the GUI
+        /// </summary>
+        private ViewModelBase _activeViewModel;
+        public ViewModelBase ActiveViewModel
         {
-            get { return _testString; }
+            get { return _activeViewModel; }
             set
             {
-                _testString = value; 
+                _activeViewModel = value;
                 RaisePropertyChanged();
             }
         }
 
         #endregion
 
-        #region [ Private Backing Fields ]
-
-        private string _testString;
-
-        /// <summary>
-        /// List of accounts
-        /// </summary>
-        public Dictionary<EAccountType, AccountList> AccountViewItems { get; set; }= new AccountTypes();
-
-        #endregion
-
-
         #region [ Constructors ]
 
-
-
-        protected async void LoadAccounts(string username, string password)
-        {
-            var chaseBankFi = new OFX.OFXFinancialInstitution(new Uri("https://ofx.chase.com"), "B1", "10898");
-            var userCredentials = new OFX.OFXCredentials(username, password);
-            var ofxService = new OFX.OFX2Service(chaseBankFi, userCredentials);
-
-            DateTimeOffset endTime = DateTimeOffset.Now;
-            DateTimeOffset startTime = endTime - new TimeSpan(1, 0, 0, 0);
-            foreach (var account in await ofxService.ListAccounts())
-            {
-                Models.Account viewAccount;
-                if (account is OFX.Types.CheckingAccount)
-                {
-                    viewAccount = new Models.Account
-                    {
-                        Name = ((OFX.Types.CheckingAccount)account).AccountId,
-                        AccountType = EAccountType.Checking
-                    };
-                }
-                else if (account is OFX.Types.SavingsAccount)
-                {
-                    viewAccount = new Models.Account
-                    {
-                        Name = ((OFX.Types.SavingsAccount)account).AccountId,
-                        AccountType = EAccountType.Savings
-                    };
-                }
-                else //(account is OFX.Types.CreditCardAccount)
-                {
-                    viewAccount = new Models.Account
-                    {
-                        Name = ((OFX.Types.CreditCardAccount)account).AccountId,
-                        AccountType = EAccountType.CreditCard
-                    };
-                }
-
-                AccountViewItems[viewAccount.AccountType].Accounts.Add(viewAccount);
-
-                /*
-                var statements = await ofxService.GetStatement(account, startTime, endTime);
-                if (statements != null)
-                {
-                    foreach (var statement in statements)
-                    {
-                    }
-                }
-                */
-            }
-        }
 
         /// <summary>
         /// Initializes a new instance of the MainViewModel class.
         /// </summary>
-        public MainViewModel()
+        public MainViewModel(IModernNavigationService navService)
         {
-            TestString = IsInDesignMode ? "This is a string that is shown when designing" : "This is a string that is shown at runtime";
-            //LoadAccounts("myuser", "mypass");
+            ViewLoaded = new RelayCommand(Loaded);
+
+            // Load our settings from the saved configuration (if present)
+            LoadSettings();
+        }
+
+        /// <summary>
+        /// Command handling the view loaded event
+        /// </summary>
+        public ICommand ViewLoaded { get; }
+
+        /// <summary>
+        /// Called when this view is loaded
+        /// </summary>
+        private void Loaded()
+        {
+            NavigationCommands.GoToPage.Execute("/Views/Initializing.xaml",
+                NavigationService.GetDescendantFromName(Application.Current.MainWindow));
+        }
+
+        /// <summary>
+        /// Load application settings from saved configuration and apply
+        /// </summary>
+        private void LoadSettings()
+        {
+            //load user visual preferences
+            switch (Properties.Settings.Default.Theme)
+            {
+                default:
+                // ReSharper disable once RedundantCaseLabel we may add more themes at a later date
+                case "dark":
+                    AppearanceManager.Current.ThemeSource = AppearanceManager.DarkThemeSource;
+                    break;
+                case "light":
+                    AppearanceManager.Current.ThemeSource = AppearanceManager.LightThemeSource;
+                    break;
+            }
+            
+            //Try to convert the color in the config file to be a color
+            //  if any of it fails then leave it to the default color
+            try
+            {   
+                var colorFromString = ColorConverter.ConvertFromString(Properties.Settings.Default.Accent) ??
+                                      ColorConverter.ConvertFromString("#FF1BA1E2");
+
+                AppearanceManager.Current.AccentColor = (Color)colorFromString;
+            }
+            catch (Exception)
+            {
+                AppearanceManager.Current.AccentColor = (Color)ColorConverter.ConvertFromString("#FF1BA1E2");
+            }
         }
 
         #endregion

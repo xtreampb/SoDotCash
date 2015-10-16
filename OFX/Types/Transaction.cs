@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using OFX.Internal;
+using OFX.Protocol;
 
 namespace OFX.Types
 {
@@ -28,7 +30,7 @@ namespace OFX.Types
             // Assign to internal state
             PostDate = OFXUtils.DateFromOFX(ofxTransaction.DTPOSTED);
             TransactionId = ofxTransaction.FITID;
-            Amount = OFXUtils.decimalStringToFixedInt(ofxTransaction.TRNAMT);
+            Amount = OFXUtils.DecimalStringToFixedInt(ofxTransaction.TRNAMT);
             Name = (string) ofxTransaction.Item;
         }
 

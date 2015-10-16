@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using OFX.Internal;
+using OFX.Protocol;
+using OFX.Types.Exceptions;
 
 namespace OFX.Types
 {
@@ -28,10 +29,19 @@ namespace OFX.Types
             EndDate = OFXUtils.DateFromOFX(statementResponse.BANKTRANLIST.DTEND);
 
             // Parse account balance
-            AccountBalance = OFXUtils.decimalStringToFixedInt(statementResponse.LEDGERBAL.BALAMT);
+            AccountBalance = OFXUtils.DecimalStringToFixedInt(statementResponse.LEDGERBAL.BALAMT);
 
             // Convert OFX transactions into our normalized Transaction objects
-            Transactions = new List<Transaction>(from ofxTransaction in statementResponse.BANKTRANLIST.STMTTRN select new Transaction(ofxTransaction));
+            if (statementResponse.BANKTRANLIST.STMTTRN != null)
+            {
+                // Convert OFX transactions into our normalized Transaction objects
+                var unorderedTransactions = from ofxTransaction in statementResponse.BANKTRANLIST.STMTTRN
+                                        select new Transaction(ofxTransaction);
+
+                Transactions = new List<Transaction>(unorderedTransactions.OrderByDescending(trans => trans.PostDate));
+            }
+            else
+                Transactions = new List<Transaction>();
         }
 
         /// <summary>
@@ -51,10 +61,18 @@ namespace OFX.Types
             EndDate = OFXUtils.DateFromOFX(statementResponse.BANKTRANLIST.DTEND);
 
             // Parse account balance
-            AccountBalance = OFXUtils.decimalStringToFixedInt(statementResponse.LEDGERBAL.BALAMT);
+            AccountBalance = OFXUtils.DecimalStringToFixedInt(statementResponse.LEDGERBAL.BALAMT);
 
             // Convert OFX transactions into our normalized Transaction objects
-            Transactions = new List<Transaction>(from ofxTransaction in statementResponse.BANKTRANLIST.STMTTRN select new Transaction(ofxTransaction));
+            if (statementResponse.BANKTRANLIST.STMTTRN != null)
+            {
+                var unorderedTransactions = from ofxTransaction in statementResponse.BANKTRANLIST.STMTTRN
+                    select new Transaction(ofxTransaction);
+
+                Transactions = new List<Transaction>(unorderedTransactions.OrderByDescending(trans => trans.PostDate));
+            }
+            else
+                Transactions = new List<Transaction>();
         }
 
         /// <summary>
@@ -62,7 +80,7 @@ namespace OFX.Types
         /// </summary>
         /// <param name="ofxResponse">OFX object populated with one or more statement responses</param>
         /// <returns></returns>
-        public static List<Statement> CreateFromOFXResponse(OFX ofxResponse)
+        public static IEnumerable<Statement> CreateFromOFXResponse(Protocol.OFX ofxResponse)
         {
             List<Statement> statementList = new List<Statement>();
 
@@ -94,7 +112,12 @@ namespace OFX.Types
                             item => item.GetType() == typeof(StatementTransactionResponse))
                             .Select(item => (StatementTransactionResponse)item))
                 {
-                    statementList.Add(new Statement(transactionResponse.STMTRS));
+                    if(transactionResponse.STMTRS != null)
+                        statementList.Add(new Statement(transactionResponse.STMTRS));
+                    else
+                    {
+                        throw new OfxException(transactionResponse.STATUS.MESSAGE);
+                    }
                 }
             }
 
@@ -132,5 +155,7 @@ namespace OFX.Types
         /// The account balance reported in this statement request. In the currency units of the account.
         /// </summary>
         public int AccountBalance { get; }
+
+        public decimal LocalizedAccountBalance => AccountBalance/100m;
     }
 }
